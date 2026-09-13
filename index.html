@@ -1,0 +1,435 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Zegarowy Quiz</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22 font-size=%2280%22><text y=%2280%22>%F0%9F%95%92</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg1:#eef2ff; --bg2:#e0f2fe; --primary:#4f46e5; --primary-dark:#4338ca;
+    --good:#16a34a; --bad:#dc2626; --text:#1e293b; --card-bg:#ffffff;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;min-height:100vh;
+    font-family:'Quicksand','Trebuchet MS',-apple-system,sans-serif;
+    background:linear-gradient(160deg,var(--bg1),var(--bg2));
+    color:var(--text);padding:16px;
+  }
+  .wrap{max-width:640px;margin:0 auto;}
+  header{text-align:center;margin-bottom:20px;}
+  h1{font-size:2rem;margin:0 0 4px;}
+  .subtitle{margin:0;color:#475569;}
+  .card{background:var(--card-bg);border-radius:24px;padding:24px;box-shadow:0 10px 30px rgba(79,70,229,0.12);text-align:center;}
+  .primary-btn{background:var(--primary);color:#fff;border:none;border-radius:14px;padding:14px 28px;font-size:1.1rem;font-weight:700;cursor:pointer;margin-top:16px;font-family:inherit;transition:transform .15s, background .15s;}
+  .primary-btn:hover{background:var(--primary-dark);transform:translateY(-2px);}
+  .progress-row{display:flex;align-items:center;gap:10px;margin-bottom:6px;}
+  .progress-bar{flex:1;height:10px;background:#e2e8f0;border-radius:6px;overflow:hidden;}
+  .progress-fill{height:100%;background:var(--primary);transition:width .3s;width:0;}
+  #progress-text{font-size:.85rem;color:#64748b;white-space:nowrap;}
+  .score-row{text-align:right;font-weight:700;color:var(--primary);margin-bottom:12px;}
+  .q-instruction{font-size:1.1rem;font-weight:700;margin:8px 0;}
+  .word-phrase,.digital-time{font-size:1.6rem;font-weight:800;color:var(--primary);margin:6px 0 16px;}
+  .time-range{font-size:1.2rem;margin:6px 0 16px;}
+  .clock-big{margin:10px auto;}
+  .clock-svg{width:100%;max-width:220px;height:auto;display:block;margin:0 auto;}
+  .options{display:grid;gap:10px;margin-top:16px;grid-template-columns:repeat(2,1fr);}
+  @media (max-width:420px){ .options-text{grid-template-columns:1fr;} }
+  .opt-btn{border:2px solid #cbd5e1;background:#f8fafc;border-radius:14px;padding:12px;font-size:1.1rem;font-weight:700;cursor:pointer;font-family:inherit;color:var(--text);transition:all .15s;}
+  .opt-btn:hover:not(:disabled){border-color:var(--primary);}
+  .opt-btn:disabled{cursor:default;}
+  .opt-btn.correct{border-color:var(--good);background:#dcfce7;color:#166534;}
+  .opt-btn.wrong{border-color:var(--bad);background:#fee2e2;color:#991b1b;}
+  .clock-option{padding:8px;}
+  .clock-option svg{max-width:110px;}
+  .input-row{display:flex;gap:10px;justify-content:center;align-items:center;margin-top:10px;flex-wrap:wrap;}
+  #inputD{width:100px;padding:10px;font-size:1.2rem;border:2px solid #cbd5e1;border-radius:12px;text-align:center;font-family:inherit;}
+  #inputD.correct{border-color:var(--good);background:#dcfce7;}
+  #inputD.wrong{border-color:var(--bad);background:#fee2e2;}
+  .check-btn{background:var(--primary);color:#fff;border:none;border-radius:12px;padding:10px 20px;font-weight:700;cursor:pointer;font-family:inherit;}
+  .check-btn:disabled{opacity:.6;cursor:default;}
+  .feedback{min-height:28px;margin-top:14px;font-weight:700;font-size:1.05rem;}
+  .feedback-good{color:var(--good);}
+  .feedback-bad{color:var(--bad);}
+  .correct-ring svg{outline:4px solid var(--good);border-radius:50%;}
+  .wrong-ring svg{outline:4px solid var(--bad);border-radius:50%;}
+  footer{text-align:center;margin-top:20px;color:#94a3b8;font-size:.85rem;}
+  h2{margin-top:0;color:var(--primary);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🕐 Zegarowy Quiz</h1>
+    <p class="subtitle">Sprawdź, jak dobrze odczytujesz godziny!</p>
+  </header>
+
+  <section id="start-screen" class="card">
+    <p>Czeka na Ciebie 10 pytań o zegarach: odczytywanie godzin, nazwy słowne, dopasowywanie zegarów oraz ustawianie wskazówki minutowej. Powodzenia!</p>
+    <button id="start-btn" class="primary-btn">Rozpocznij quiz</button>
+  </section>
+
+  <section id="quiz-screen" class="card" hidden>
+    <div class="progress-row">
+      <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+      <span id="progress-text"></span>
+    </div>
+    <div class="score-row">Wynik: <span id="score-text">0</span>/10</div>
+    <div id="question-area"></div>
+    <div class="feedback" id="feedback"></div>
+    <button id="next-btn" class="primary-btn" hidden>Dalej ▶</button>
+  </section>
+
+  <section id="result-screen" class="card" hidden>
+    <h2 id="result-title"></h2>
+    <p id="result-desc"></p>
+    <button id="restart-btn" class="primary-btn">Zagraj ponownie</button>
+  </section>
+
+  <footer>
+    <p>Na podstawie działu „Zegary" — ćwiczenia do samodzielnej nauki.</p>
+  </footer>
+</div>
+
+<script>
+"use strict";
+
+// ---------- utilities ----------
+const MINUTES = [0,5,10,15,20,25,30,35,40,45,50,55];
+function pad2(n){ return String(n).padStart(2,'0'); }
+function fmt(h,m){ return pad2(h)+':'+pad2(m); }
+function randInt(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
+function choice(arr){ return arr[randInt(0,arr.length-1)]; }
+function shuffle(arr){
+  const a=[...arr];
+  for(let i=a.length-1;i>0;i--){ const j=randInt(0,i); [a[i],a[j]]=[a[j],a[i]]; }
+  return a;
+}
+function sampleDistinct(pool, n, exclude){
+  return shuffle(pool.filter(v=>v!==exclude)).slice(0,n);
+}
+
+// ---------- Polish hour names ----------
+const NOM = [null,'pierwsza','druga','trzecia','czwarta','piąta','szósta','siódma','ósma','dziewiąta','dziesiąta','jedenasta','dwunasta'];
+const GEN = [null,'pierwszej','drugiej','trzeciej','czwartej','piątej','szóstej','siódmej','ósmej','dziewiątej','dziesiątej','jedenastej','dwunastej'];
+function h12(hour24){ const h = hour24 % 12; return h===0?12:h; }
+function wordPhrase(hour24, minute){
+  const cur = h12(hour24);
+  const next = h12(hour24+1);
+  switch(minute){
+    case 0: return 'godzina ' + NOM[cur];
+    case 5: return 'pięć po ' + GEN[cur];
+    case 10: return 'dziesięć po ' + GEN[cur];
+    case 15: return 'piętnaście po ' + GEN[cur];
+    case 20: return 'dwadzieścia po ' + GEN[cur];
+    case 25: return 'dwadzieścia pięć po ' + GEN[cur];
+    case 30: return 'wpół do ' + GEN[next];
+    case 35: return 'za dwadzieścia pięć ' + NOM[next];
+    case 40: return 'za dwadzieścia ' + NOM[next];
+    case 45: return 'za piętnaście ' + NOM[next];
+    case 50: return 'za dziesięć ' + NOM[next];
+    case 55: return 'za pięć ' + NOM[next];
+  }
+}
+
+// ---------- clock SVG ----------
+function polar(cx,cy,r,angleDeg){
+  const rad = angleDeg*Math.PI/180;
+  return { x: cx + r*Math.sin(rad), y: cy - r*Math.cos(rad) };
+}
+function clockFaceSVG({hour,minute,minuteHandMinute,size=170,id='',draggable=false}){
+  const cx=size/2, cy=size/2, r=size/2-8;
+  const mSource = (minuteHandMinute!==undefined ? minuteHandMinute : minute);
+  const minuteAngle = mSource*6;
+  const hourAngle = ((hour%12) + minute/60)*30;
+
+  let ticks='';
+  for(let i=0;i<60;i+=5){
+    const big = i%15===0;
+    const p1=polar(cx,cy,r-2,i*6);
+    const p2=polar(cx,cy, big? r-14 : r-8, i*6);
+    ticks+=`<line x1="${p1.x.toFixed(1)}" y1="${p1.y.toFixed(1)}" x2="${p2.x.toFixed(1)}" y2="${p2.y.toFixed(1)}" stroke="#334155" stroke-width="${big?3:1.5}" stroke-linecap="round"/>`;
+  }
+  let numbers='';
+  for(let n=1;n<=12;n++){
+    const p = polar(cx,cy,r-26,n*30);
+    numbers+=`<text x="${p.x.toFixed(1)}" y="${(p.y+5).toFixed(1)}" font-size="${(size*0.11).toFixed(1)}" text-anchor="middle" fill="#1e293b" font-weight="700">${n}</text>`;
+  }
+  const hourHandLen = r*0.5;
+  const minuteHandLen = r*0.78;
+  const hourHand = `<line x1="${cx}" y1="${cy}" x2="${cx}" y2="${(cy-hourHandLen).toFixed(1)}" stroke="#1e293b" stroke-width="6" stroke-linecap="round" transform="rotate(${hourAngle.toFixed(2)} ${cx} ${cy})"/>`;
+  const minuteHand = `<g class="minhand-group" ${draggable?`style="cursor:grab;touch-action:none;"`:''} transform="rotate(${minuteAngle.toFixed(2)} ${cx} ${cy})">
+     <line x1="${cx}" y1="${cy}" x2="${cx}" y2="${(cy-minuteHandLen).toFixed(1)}" stroke="#2563eb" stroke-width="4" stroke-linecap="round"/>
+     ${draggable?`<line x1="${cx}" y1="${cy}" x2="${cx}" y2="${(cy-minuteHandLen).toFixed(1)}" stroke="transparent" stroke-width="28" stroke-linecap="round"/>`:''}
+  </g>`;
+  return `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" class="clock-svg" data-id="${id}">
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="#fff" stroke="#334155" stroke-width="4"/>
+    ${ticks}
+    ${numbers}
+    ${hourHand}
+    ${minuteHand}
+    <circle cx="${cx}" cy="${cy}" r="7" fill="#1e293b"/>
+  </svg>`;
+}
+
+function setupDraggableClock(container, size, state){
+  const svg = container.querySelector('svg.clock-svg');
+  const group = container.querySelector('.minhand-group');
+  const cx=size/2, cy=size/2;
+  let dragging=false;
+  function angleFromEvent(e){
+    const rect = svg.getBoundingClientRect();
+    const clientCx = rect.left+rect.width/2;
+    const clientCy = rect.top+rect.height/2;
+    const dx = e.clientX-clientCx;
+    const dy = e.clientY-clientCy;
+    let ang = Math.atan2(dx,-dy)*180/Math.PI;
+    if(ang<0) ang+=360;
+    return ang;
+  }
+  function update(e){
+    const ang = angleFromEvent(e);
+    const idx = Math.round(ang/30)%12;
+    group.setAttribute('transform', `rotate(${idx*30} ${cx} ${cy})`);
+    state.minute = (idx*5)%60;
+  }
+  group.addEventListener('pointerdown', e=>{ e.preventDefault(); dragging=true; group.setPointerCapture(e.pointerId); update(e); });
+  group.addEventListener('pointermove', e=>{ if(dragging) update(e); });
+  group.addEventListener('pointerup', ()=>{ dragging=false; });
+  group.addEventListener('pointercancel', ()=>{ dragging=false; });
+}
+
+// ---------- shared option helpers ----------
+function lockOptions(wrap){ [...wrap.children].forEach(b=>b.disabled=true); }
+function markOption(btn,isCorrect){ btn.classList.add(isCorrect?'correct':'wrong'); }
+function markCorrect(wrap){ const b=[...wrap.children].find(x=>x.dataset.correct==='true'); if(b) b.classList.add('correct'); }
+
+// ---------- question generators ----------
+function genA(){ // analog clock -> pick digital time
+  const hour=randInt(0,23), minute=choice(MINUTES);
+  const wrong = sampleDistinct(MINUTES,3,minute);
+  const options = shuffle([
+    {text: fmt(hour,minute), correct:true},
+    ...wrong.map(m=>({text: fmt(hour,m), correct:false}))
+  ]);
+  return {
+    type:'A', correctAnswerText: fmt(hour,minute),
+    render(container,onAnswer){
+      container.innerHTML = `
+        <p class="q-instruction">Która to godzina?</p>
+        <div class="clock-big">${clockFaceSVG({hour,minute,size:200,id:'qA'})}</div>
+        <div class="options options-text" id="optsA"></div>`;
+      const wrap = container.querySelector('#optsA');
+      options.forEach(opt=>{
+        const btn=document.createElement('button');
+        btn.className='opt-btn'; btn.textContent=opt.text; btn.dataset.correct=opt.correct;
+        btn.onclick=()=>{ lockOptions(wrap); markOption(btn,opt.correct); if(!opt.correct) markCorrect(wrap); onAnswer(opt.correct); };
+        wrap.appendChild(btn);
+      });
+    }
+  };
+}
+
+function genB(){ // digital time -> pick matching analog clock
+  const hour=randInt(0,23), minute=choice(MINUTES);
+  const wrong = sampleDistinct(MINUTES,3,minute);
+  const options = shuffle([
+    {hour,minute,correct:true},
+    ...wrong.map(m=>({hour,minute:m,correct:false}))
+  ]);
+  return {
+    type:'B', correctAnswerText: fmt(hour,minute),
+    render(container,onAnswer){
+      container.innerHTML = `<p class="q-instruction">Który zegar pokazuje godzinę <strong>${fmt(hour,minute)}</strong>?</p>
+      <div class="options options-clocks" id="optsB"></div>`;
+      const wrap = container.querySelector('#optsB');
+      options.forEach((opt,i)=>{
+        const btn=document.createElement('button');
+        btn.className='opt-btn clock-option'; btn.dataset.correct=opt.correct;
+        btn.innerHTML = clockFaceSVG({hour:opt.hour,minute:opt.minute,size:120,id:'qB'+i});
+        btn.onclick=()=>{ lockOptions(wrap); markOption(btn,opt.correct); if(!opt.correct) markCorrect(wrap); onAnswer(opt.correct); };
+        wrap.appendChild(btn);
+      });
+    }
+  };
+}
+
+function genC(){ // word phrase <-> digital time
+  const hour=randInt(0,23), minute=choice(MINUTES);
+  const direction = Math.random()<0.5 ? 1 : 2;
+  const wrongMinutes = sampleDistinct(MINUTES,3,minute);
+  let promptHTML, options, correctAnswerText;
+  if(direction===1){
+    promptHTML = `<p class="q-instruction">Jak zapiszesz cyfrowo godzinę:</p><p class="word-phrase">${wordPhrase(hour,minute)}</p>`;
+    options = shuffle([{text:fmt(hour,minute),correct:true}, ...wrongMinutes.map(m=>({text:fmt(hour,m),correct:false}))]);
+    correctAnswerText = fmt(hour,minute);
+  } else {
+    promptHTML = `<p class="q-instruction">Jak powiesz słownie godzinę:</p><p class="digital-time">${fmt(hour,minute)}</p>`;
+    options = shuffle([{text:wordPhrase(hour,minute),correct:true}, ...wrongMinutes.map(m=>({text:wordPhrase(hour,m),correct:false}))]);
+    correctAnswerText = wordPhrase(hour,minute);
+  }
+  return {
+    type:'C', correctAnswerText,
+    render(container,onAnswer){
+      container.innerHTML = promptHTML + `<div class="options options-text" id="optsC"></div>`;
+      const wrap = container.querySelector('#optsC');
+      options.forEach(opt=>{
+        const btn=document.createElement('button');
+        btn.className='opt-btn'; btn.textContent=opt.text; btn.dataset.correct=opt.correct;
+        btn.onclick=()=>{ lockOptions(wrap); markOption(btn,opt.correct); if(!opt.correct) markCorrect(wrap); onAnswer(opt.correct); };
+        wrap.appendChild(btn);
+      });
+    }
+  };
+}
+
+function genD(){ // elapsed minutes
+  let start, end, elapsed;
+  for(let tries=0; tries<30; tries++){
+    const sh=randInt(0,22), sm=choice(MINUTES);
+    const el=choice(MINUTES.filter(v=>v>0));
+    let eh=sh, em=sm+el;
+    if(em>=60){ eh+=1; em-=60; }
+    if(eh<=23){ start={h:sh,m:sm}; end={h:eh,m:em}; elapsed=el; break; }
+  }
+  return {
+    type:'D', correctAnswerText: elapsed+' min',
+    render(container,onAnswer){
+      container.innerHTML = `<p class="q-instruction">Oblicz, ile minut upłynęło:</p>
+        <p class="time-range">od <strong>${fmt(start.h,start.m)}</strong> do <strong>${fmt(end.h,end.m)}</strong></p>
+        <div class="input-row">
+          <input type="number" inputmode="numeric" id="inputD" placeholder="minuty" autocomplete="off" />
+          <button class="check-btn" id="checkD">Sprawdź</button>
+        </div>`;
+      const input = container.querySelector('#inputD');
+      const btn = container.querySelector('#checkD');
+      const submit=()=>{
+        if(input.disabled) return;
+        const val = parseInt(input.value,10);
+        input.disabled=true; btn.disabled=true;
+        const isCorrect = val===elapsed;
+        input.classList.add(isCorrect?'correct':'wrong');
+        onAnswer(isCorrect);
+      };
+      btn.onclick=submit;
+      input.addEventListener('keydown', e=>{ if(e.key==='Enter') submit(); });
+      input.focus();
+    }
+  };
+}
+
+function genE(){ // drag minute hand to target time
+  const hour=randInt(0,23), minute=choice(MINUTES);
+  const wrongStart = choice(MINUTES.filter(v=>v!==minute));
+  return {
+    type:'E', correctAnswerText: fmt(hour,minute),
+    render(container,onAnswer){
+      const size=200;
+      container.innerHTML = `<p class="q-instruction">Ustaw niebieską wskazówkę minutową tak, aby zegar pokazywał:</p>
+        <p class="digital-time">${fmt(hour,minute)}</p>
+        <div class="clock-big" id="clockE">${clockFaceSVG({hour,minute,minuteHandMinute:wrongStart,size,id:'qE',draggable:true})}</div>
+        <button class="check-btn" id="checkE">Sprawdź</button>`;
+      const clockWrap = container.querySelector('#clockE');
+      const state = { minute: wrongStart };
+      setupDraggableClock(clockWrap, size, state);
+      const checkBtn = container.querySelector('#checkE');
+      checkBtn.onclick=()=>{
+        if(checkBtn.disabled) return;
+        const isCorrect = state.minute===minute;
+        checkBtn.disabled=true;
+        clockWrap.classList.add(isCorrect?'correct-ring':'wrong-ring');
+        onAnswer(isCorrect);
+      };
+    }
+  };
+}
+
+function buildQuestionPool(){
+  const gens=[genA,genB,genC,genD,genE];
+  const order = shuffle([...gens,...gens]);
+  return order.map(g=>g());
+}
+
+// ---------- app controller ----------
+const startScreen = document.getElementById('start-screen');
+const quizScreen = document.getElementById('quiz-screen');
+const resultScreen = document.getElementById('result-screen');
+const questionArea = document.getElementById('question-area');
+const feedback = document.getElementById('feedback');
+const nextBtn = document.getElementById('next-btn');
+const progressFill = document.getElementById('progress-fill');
+const progressText = document.getElementById('progress-text');
+const scoreText = document.getElementById('score-text');
+const resultTitle = document.getElementById('result-title');
+const resultDesc = document.getElementById('result-desc');
+
+const PRAISE = ['Świetnie! ✅','Brawo! 🎉','Dokładnie tak! 👍','Super! ⭐','Tak jest! 🙌'];
+
+const state = { questions:[], index:0, score:0 };
+
+function startQuiz(){
+  state.questions = buildQuestionPool();
+  state.index = 0;
+  state.score = 0;
+  startScreen.hidden = true;
+  resultScreen.hidden = true;
+  quizScreen.hidden = false;
+  showQuestion();
+}
+
+function showQuestion(){
+  const q = state.questions[state.index];
+  progressFill.style.width = (state.index/state.questions.length*100)+'%';
+  progressText.textContent = `Pytanie ${state.index+1} z ${state.questions.length}`;
+  scoreText.textContent = state.score;
+  feedback.textContent = '';
+  feedback.className = 'feedback';
+  nextBtn.hidden = true;
+  questionArea.innerHTML = '';
+  q.render(questionArea, (isCorrect)=>handleAnswer(isCorrect, q.correctAnswerText));
+}
+
+function handleAnswer(isCorrect, correctAnswerText){
+  if(isCorrect){
+    state.score++;
+    scoreText.textContent = state.score;
+    feedback.textContent = choice(PRAISE);
+    feedback.className = 'feedback feedback-good';
+  } else {
+    feedback.textContent = `Prawidłowa odpowiedź: ${correctAnswerText}`;
+    feedback.className = 'feedback feedback-bad';
+  }
+  nextBtn.hidden = false;
+}
+
+function goNext(){
+  state.index++;
+  if(state.index >= state.questions.length){
+    showResults();
+  } else {
+    showQuestion();
+  }
+}
+
+function showResults(){
+  quizScreen.hidden = true;
+  resultScreen.hidden = false;
+  const total = state.questions.length;
+  resultTitle.textContent = `Wynik: ${state.score} / ${total}`;
+  let desc;
+  if(state.score===total) desc='Perfekcyjnie! Jesteś mistrzem zegara! 🏆';
+  else if(state.score>=total*0.7) desc='Świetna robota! 👏';
+  else if(state.score>=total*0.4) desc='Dobrze, jeszcze trochę ćwiczeń i będzie super! 💪';
+  else desc='Ćwicz dalej odczytywanie godzin — na pewno Ci pójdzie! 🕐';
+  resultDesc.textContent = desc;
+}
+
+document.getElementById('start-btn').onclick = startQuiz;
+document.getElementById('restart-btn').onclick = startQuiz;
+nextBtn.onclick = goNext;
+</script>
+</body>
+</html>
