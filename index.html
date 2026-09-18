@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Zegarowy Quiz</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22 font-size=%2280%22><text y=%2280%22>%F0%9F%95%92</text></svg>">
+<title>Wielka Powtórka</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22 font-size=%2280%22><text y=%2280%22>%F0%9F%A7%AE</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;700;800&display=swap" rel="stylesheet">
 <style>
@@ -26,11 +26,13 @@
   .card{background:var(--card-bg);border-radius:24px;padding:24px;box-shadow:0 10px 30px rgba(79,70,229,0.12);text-align:center;}
   .primary-btn{background:var(--primary);color:#fff;border:none;border-radius:14px;padding:14px 28px;font-size:1.1rem;font-weight:700;cursor:pointer;margin-top:16px;font-family:inherit;transition:transform .15s, background .15s;}
   .primary-btn:hover{background:var(--primary-dark);transform:translateY(-2px);}
+  .primary-btn:disabled{opacity:.5;cursor:default;transform:none;}
   .progress-row{display:flex;align-items:center;gap:10px;margin-bottom:6px;}
   .progress-bar{flex:1;height:10px;background:#e2e8f0;border-radius:6px;overflow:hidden;}
   .progress-fill{height:100%;background:var(--primary);transition:width .3s;width:0;}
   #progress-text{font-size:.85rem;color:#64748b;white-space:nowrap;}
-  .score-row{text-align:right;font-weight:700;color:var(--primary);margin-bottom:12px;}
+  .score-row{text-align:right;font-weight:700;color:var(--primary);margin-bottom:4px;}
+  .topic-badge{display:inline-block;font-size:.72rem;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--primary);background:#eef2ff;border-radius:8px;padding:3px 12px;margin-bottom:10px;}
   .q-instruction{font-size:1.1rem;font-weight:700;margin:8px 0;}
   .word-phrase,.digital-time{font-size:1.6rem;font-weight:800;color:var(--primary);margin:6px 0 16px;}
   .time-range{font-size:1.2rem;margin:6px 0 16px;}
@@ -54,21 +56,30 @@
   .feedback{min-height:28px;margin-top:14px;font-weight:700;font-size:1.05rem;}
   .feedback-good{color:var(--good);}
   .feedback-bad{color:var(--bad);}
+  .hint-box{margin-top:10px;padding:10px 14px;background:#fef9c3;border:1px solid #fde68a;border-radius:12px;font-size:.92rem;font-weight:500;color:#78350f;text-align:left;line-height:1.4;}
+  .hint-box strong{color:#78350f;}
   .correct-ring svg{outline:4px solid var(--good);border-radius:50%;}
   .wrong-ring svg{outline:4px solid var(--bad);border-radius:50%;}
   footer{text-align:center;margin-top:20px;color:#94a3b8;font-size:.85rem;}
   h2{margin-top:0;color:var(--primary);}
+  .chip-row{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:16px 0;}
+  .chip{border:2px solid #cbd5e1;background:#f8fafc;border-radius:999px;padding:9px 16px;font-weight:700;font-family:inherit;cursor:pointer;font-size:.92rem;color:var(--text);transition:all .15s;}
+  .chip:hover{border-color:var(--primary);}
+  .chip.selected{border-color:var(--primary);background:#eef2ff;color:var(--primary-dark);}
+  .count-note{color:#64748b;font-size:.92rem;margin:10px 0 0;}
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <h1>🕐 Zegarowy Quiz</h1>
-    <p class="subtitle">Sprawdź, jak dobrze odczytujesz godziny!</p>
+    <h1>🧮 Wielka Powtórka</h1>
+    <p class="subtitle">Dział: Zaczynamy przygodę z matematyką</p>
   </header>
 
   <section id="start-screen" class="card">
-    <p>Czeka na Ciebie 10 pytań o zegarach: odczytywanie godzin, nazwy słowne, dopasowywanie zegarów oraz ustawianie wskazówki minutowej. Powodzenia!</p>
+    <p>Wybierz zakres powtórki:</p>
+    <div class="chip-row" id="topic-chips"></div>
+    <p class="count-note" id="count-note"></p>
     <button id="start-btn" class="primary-btn">Rozpocznij quiz</button>
   </section>
 
@@ -77,7 +88,8 @@
       <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
       <span id="progress-text"></span>
     </div>
-    <div class="score-row">Wynik: <span id="score-text">0</span>/10</div>
+    <div class="score-row">Wynik: <span id="score-text">0</span>/<span id="score-total">0</span></div>
+    <div class="topic-badge" id="topic-badge"></div>
     <div id="question-area"></div>
     <div class="feedback" id="feedback"></div>
     <button id="next-btn" class="primary-btn" hidden>Dalej ▶</button>
@@ -90,15 +102,14 @@
   </section>
 
   <footer>
-    <p>Na podstawie działu „Zegary" — ćwiczenia do samodzielnej nauki.</p>
+    <p>Powtórka z zegarów, kalendarza, cyfr rzymskich i długości — ćwiczenia do samodzielnej nauki.</p>
   </footer>
 </div>
 
 <script>
 "use strict";
 
-// ---------- utilities ----------
-const MINUTES = [0,5,10,15,20,25,30,35,40,45,50,55];
+// ---------- generic utilities ----------
 function pad2(n){ return String(n).padStart(2,'0'); }
 function fmt(h,m){ return pad2(h)+':'+pad2(m); }
 function randInt(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
@@ -111,8 +122,31 @@ function shuffle(arr){
 function sampleDistinct(pool, n, exclude){
   return shuffle(pool.filter(v=>v!==exclude)).slice(0,n);
 }
+function cap(s){ return s.charAt(0).toUpperCase()+s.slice(1); }
+function uniquePush(arr, val){ if(!arr.includes(val)) arr.push(val); return arr; }
 
-// ---------- Polish hour names ----------
+// ---------- shared option helpers ----------
+function lockOptions(wrap){ [...wrap.children].forEach(b=>b.disabled=true); }
+function markOption(btn,isCorrect){ btn.classList.add(isCorrect?'correct':'wrong'); }
+function markCorrectByValue(wrap, correctText){
+  const b=[...wrap.children].find(x=>x.dataset.correct==='true');
+  if(b) b.classList.add('correct');
+}
+function renderTextOptions(container, wrapId, options, onAnswer){
+  container.innerHTML += `<div class="options options-text" id="${wrapId}"></div>`;
+  const wrap = container.querySelector('#'+wrapId);
+  options.forEach(opt=>{
+    const btn=document.createElement('button');
+    btn.className='opt-btn'; btn.textContent=opt.text; btn.dataset.correct=opt.correct;
+    btn.onclick=()=>{ lockOptions(wrap); markOption(btn,opt.correct); if(!opt.correct) markCorrectByValue(wrap); onAnswer(opt.correct); };
+    wrap.appendChild(btn);
+  });
+}
+
+/* =========================================================
+   TOPIC 1: ZEGARY (clocks)
+   ========================================================= */
+const MINUTES = [0,5,10,15,20,25,30,35,40,45,50,55];
 const NOM = [null,'pierwsza','druga','trzecia','czwarta','piąta','szósta','siódma','ósma','dziewiąta','dziesiąta','jedenasta','dwunasta'];
 const GEN = [null,'pierwszej','drugiej','trzeciej','czwartej','piątej','szóstej','siódmej','ósmej','dziewiątej','dziesiątej','jedenastej','dwunastej'];
 function h12(hour24){ const h = hour24 % 12; return h===0?12:h; }
@@ -134,8 +168,6 @@ function wordPhrase(hour24, minute){
     case 55: return 'za pięć ' + NOM[next];
   }
 }
-
-// ---------- clock SVG ----------
 function polar(cx,cy,r,angleDeg){
   const rad = angleDeg*Math.PI/180;
   return { x: cx + r*Math.sin(rad), y: cy - r*Math.cos(rad) };
@@ -174,7 +206,6 @@ function clockFaceSVG({hour,minute,minuteHandMinute,size=170,id='',draggable=fal
     <circle cx="${cx}" cy="${cy}" r="7" fill="#1e293b"/>
   </svg>`;
 }
-
 function setupDraggableClock(container, size, state){
   const svg = container.querySelector('svg.clock-svg');
   const group = container.querySelector('.minhand-group');
@@ -202,38 +233,28 @@ function setupDraggableClock(container, size, state){
   group.addEventListener('pointercancel', ()=>{ dragging=false; });
 }
 
-// ---------- shared option helpers ----------
-function lockOptions(wrap){ [...wrap.children].forEach(b=>b.disabled=true); }
-function markOption(btn,isCorrect){ btn.classList.add(isCorrect?'correct':'wrong'); }
-function markCorrect(wrap){ const b=[...wrap.children].find(x=>x.dataset.correct==='true'); if(b) b.classList.add('correct'); }
-
-// ---------- question generators ----------
-function genA(){ // analog clock -> pick digital time
+function genTimeReadClock(){
   const hour=randInt(0,23), minute=choice(MINUTES);
   const wrong = sampleDistinct(MINUTES,3,minute);
   const options = shuffle([
     {text: fmt(hour,minute), correct:true},
     ...wrong.map(m=>({text: fmt(hour,m), correct:false}))
   ]);
+  const hintMinute = minute===0
+    ? `Wskazówka minutowa wskazuje 12 (czyli 0 minut) — to znaczy, że jest pełna godzina.`
+    : `Wskazówka minutowa wskazuje ${minute} minut (licz co 5: każda kreska/cyfra na tarczy to 5 minut, ${minute}÷5=${minute/5} kresek).`;
   return {
-    type:'A', correctAnswerText: fmt(hour,minute),
+    topicLabel:'Zegary', correctAnswerText: fmt(hour,minute),
+    hint: `Wskazówka godzinowa (krótsza) jest tuż po ${h12(hour)} — czyli jest już po godzinie ${h12(hour)}. ${hintMinute}`,
     render(container,onAnswer){
       container.innerHTML = `
         <p class="q-instruction">Która to godzina?</p>
-        <div class="clock-big">${clockFaceSVG({hour,minute,size:200,id:'qA'})}</div>
-        <div class="options options-text" id="optsA"></div>`;
-      const wrap = container.querySelector('#optsA');
-      options.forEach(opt=>{
-        const btn=document.createElement('button');
-        btn.className='opt-btn'; btn.textContent=opt.text; btn.dataset.correct=opt.correct;
-        btn.onclick=()=>{ lockOptions(wrap); markOption(btn,opt.correct); if(!opt.correct) markCorrect(wrap); onAnswer(opt.correct); };
-        wrap.appendChild(btn);
-      });
+        <div class="clock-big">${clockFaceSVG({hour,minute,size:200,id:'qA'})}</div>`;
+      renderTextOptions(container,'optsA',options,onAnswer);
     }
   };
 }
-
-function genB(){ // digital time -> pick matching analog clock
+function genTimePickClock(){
   const hour=randInt(0,23), minute=choice(MINUTES);
   const wrong = sampleDistinct(MINUTES,3,minute);
   const options = shuffle([
@@ -241,7 +262,8 @@ function genB(){ // digital time -> pick matching analog clock
     ...wrong.map(m=>({hour,minute:m,correct:false}))
   ]);
   return {
-    type:'B', correctAnswerText: fmt(hour,minute),
+    topicLabel:'Zegary', correctAnswerText: fmt(hour,minute),
+    hint: `Szukaj zegara, na którym wskazówka godzinowa jest tuż po cyfrze ${h12(hour)}, a minutowa wskazuje ${minute===0?'12 (pełna godzina)':`${minute} minut, czyli cyfrę ${minute/5} na tarczy`}.`,
     render(container,onAnswer){
       container.innerHTML = `<p class="q-instruction">Który zegar pokazuje godzinę <strong>${fmt(hour,minute)}</strong>?</p>
       <div class="options options-clocks" id="optsB"></div>`;
@@ -250,14 +272,20 @@ function genB(){ // digital time -> pick matching analog clock
         const btn=document.createElement('button');
         btn.className='opt-btn clock-option'; btn.dataset.correct=opt.correct;
         btn.innerHTML = clockFaceSVG({hour:opt.hour,minute:opt.minute,size:120,id:'qB'+i});
-        btn.onclick=()=>{ lockOptions(wrap); markOption(btn,opt.correct); if(!opt.correct) markCorrect(wrap); onAnswer(opt.correct); };
+        btn.onclick=()=>{ lockOptions(wrap); markOption(btn,opt.correct); if(!opt.correct) markCorrectByValue(wrap); onAnswer(opt.correct); };
         wrap.appendChild(btn);
       });
     }
   };
 }
-
-function genC(){ // word phrase <-> digital time
+function timeWordHint(hour, minute){
+  const cur = h12(hour), next = h12(hour+1);
+  if(minute===0) return `„godzina ${NOM[cur]}” to pełna godzina — minuty to 00.`;
+  if(minute<=25) return `„... po” oznacza tyle minut po pełnej godzinie, ile słyszysz w nazwie — czyli ${minute} minut po godzinie ${cur} (${GEN[cur]}).`;
+  if(minute===30) return `„wpół do” oznacza dokładnie 30 minut po pełnej godzinie — czyli w połowie drogi do godziny ${next} (${GEN[next]}).`;
+  return `„za ...” oznacza, ile minut brakuje do NASTĘPNEJ pełnej godziny. Tutaj brakuje ${60-minute} minut do godziny ${next} (bo 60-${minute}=${60-minute}), więc jest ${minute} minut po godzinie ${cur}.`;
+}
+function genTimeWords(){
   const hour=randInt(0,23), minute=choice(MINUTES);
   const direction = Math.random()<0.5 ? 1 : 2;
   const wrongMinutes = sampleDistinct(MINUTES,3,minute);
@@ -272,21 +300,15 @@ function genC(){ // word phrase <-> digital time
     correctAnswerText = wordPhrase(hour,minute);
   }
   return {
-    type:'C', correctAnswerText,
+    topicLabel:'Zegary', correctAnswerText,
+    hint: timeWordHint(hour,minute),
     render(container,onAnswer){
-      container.innerHTML = promptHTML + `<div class="options options-text" id="optsC"></div>`;
-      const wrap = container.querySelector('#optsC');
-      options.forEach(opt=>{
-        const btn=document.createElement('button');
-        btn.className='opt-btn'; btn.textContent=opt.text; btn.dataset.correct=opt.correct;
-        btn.onclick=()=>{ lockOptions(wrap); markOption(btn,opt.correct); if(!opt.correct) markCorrect(wrap); onAnswer(opt.correct); };
-        wrap.appendChild(btn);
-      });
+      container.innerHTML = promptHTML;
+      renderTextOptions(container,'optsC',options,onAnswer);
     }
   };
 }
-
-function genD(){ // elapsed minutes
+function genTimeElapsed(){
   let start, end, elapsed;
   for(let tries=0; tries<30; tries++){
     const sh=randInt(0,22), sm=choice(MINUTES);
@@ -295,8 +317,16 @@ function genD(){ // elapsed minutes
     if(em>=60){ eh+=1; em-=60; }
     if(eh<=23){ start={h:sh,m:sm}; end={h:eh,m:em}; elapsed=el; break; }
   }
+  let elapsedHint;
+  if(start.h===end.h){
+    elapsedHint = `Godzina się nie zmieniła, więc wystarczy odjąć minuty: ${end.m} - ${start.m} = ${elapsed} min.`;
+  } else {
+    const toFullHour = 60-start.m;
+    elapsedHint = `Podziel obliczenia na dwa etapy: od ${fmt(start.h,start.m)} do pełnej godziny ${fmt(start.h+1,0)} mija ${toFullHour} min, a od ${fmt(start.h+1,0)} do ${fmt(end.h,end.m)} mija ${end.m} min. Razem: ${toFullHour} + ${end.m} = ${elapsed} min.`;
+  }
   return {
-    type:'D', correctAnswerText: elapsed+' min',
+    topicLabel:'Zegary', correctAnswerText: elapsed+' min',
+    hint: elapsedHint,
     render(container,onAnswer){
       container.innerHTML = `<p class="q-instruction">Oblicz, ile minut upłynęło:</p>
         <p class="time-range">od <strong>${fmt(start.h,start.m)}</strong> do <strong>${fmt(end.h,end.m)}</strong></p>
@@ -320,12 +350,13 @@ function genD(){ // elapsed minutes
     }
   };
 }
-
-function genE(){ // drag minute hand to target time
+function genTimeSetHand(){
   const hour=randInt(0,23), minute=choice(MINUTES);
   const wrongStart = choice(MINUTES.filter(v=>v!==minute));
+  const targetNumeral = minute===0?12:minute/5;
   return {
-    type:'E', correctAnswerText: fmt(hour,minute),
+    topicLabel:'Zegary', correctAnswerText: fmt(hour,minute),
+    hint: `Każda kreska/cyfra na tarczy to 5 minut. Aby ustawić ${minute} minut, przesuń wskazówkę tak, aby wskazywała cyfrę ${targetNumeral} (${minute===0?'czyli 12, na pełną godzinę':`bo ${targetNumeral}×5=${minute}`}).`,
     render(container,onAnswer){
       const size=200;
       container.innerHTML = `<p class="q-instruction">Ustaw niebieską wskazówkę minutową tak, aby zegar pokazywał:</p>
@@ -347,13 +378,398 @@ function genE(){ // drag minute hand to target time
   };
 }
 
-function buildQuestionPool(){
-  const gens=[genA,genB,genC,genD,genE];
-  const order = shuffle([...gens,...gens]);
-  return order.map(g=>g());
+/* =========================================================
+   TOPIC 2: KALENDARZ (calendar)
+   ========================================================= */
+const MONTHS = ['styczeń','luty','marzec','kwiecień','maj','czerwiec','lipiec','sierpień','wrzesień','październik','listopad','grudzień'];
+const MONTHS_GEN = ['stycznia','lutego','marca','kwietnia','maja','czerwca','lipca','sierpnia','września','października','listopada','grudnia'];
+const DAYS_NORMAL = [31,28,31,30,31,30,31,31,30,31,30,31];
+const DAYS_LEAP    = [31,29,31,30,31,30,31,31,30,31,30,31];
+const DOW = ['poniedziałek','wtorek','środa','czwartek','piątek','sobota','niedziela'];
+const MONTH_ABBR = ['Sty','Lut','Mar','Kwi','Maj','Cze','Lip','Sie','Wrz','Paź','Lis','Gru'];
+function isLeap(y){ return y%4===0; }
+function weeksWord(n){ if(n===1) return 'tydzień'; if(n<=4) return 'tygodnie'; return 'tygodni'; }
+function knuckleDiagramSVG(highlightIdx){
+  const w=300, h=110, n=12, marginX=16;
+  const stepX = (w-2*marginX)/(n-1);
+  const highY=32, lowY=62;
+  const pts = [];
+  for(let i=0;i<n;i++){
+    const isKnuckle = DAYS_NORMAL[i]===31;
+    pts.push({x: marginX+i*stepX, y: isKnuckle?highY:lowY, isKnuckle});
+  }
+  const path = pts.map((p,i)=> (i===0?'M':'L')+p.x.toFixed(1)+','+p.y.toFixed(1)).join(' ');
+  let dots='', labels='';
+  pts.forEach((p,i)=>{
+    const isHi = i===highlightIdx;
+    const r = isHi?9:5;
+    const fill = isHi? '#4f46e5' : (p.isKnuckle?'#94a3b8':'#cbd5e1');
+    dots+=`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${r}" fill="${fill}" stroke="${isHi?'#312e81':'none'}" stroke-width="2"/>`;
+    const labelY = p.isKnuckle ? p.y-14 : p.y+20;
+    labels+=`<text x="${p.x.toFixed(1)}" y="${labelY.toFixed(1)}" font-size="10" text-anchor="middle" fill="${isHi?'#4338ca':'#64748b'}" font-weight="${isHi?'800':'600'}">${MONTH_ABBR[i]}</text>`;
+  });
+  return `<svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}" style="max-width:320px;display:block;margin:8px auto 0;">
+    <path d="${path}" fill="none" stroke="#e2e8f0" stroke-width="2"/>
+    ${dots}${labels}
+  </svg>`;
 }
 
-// ---------- app controller ----------
+function genCalMonthDays(){
+  const mi = randInt(0,11);
+  const leap = Math.random()<0.5;
+  const days = leap? DAYS_LEAP[mi] : DAYS_NORMAL[mi];
+  const isFeb = mi===1;
+  const promptExtra = isFeb ? (leap? ' (w roku przestępnym)' : ' (w roku zwykłym)') : '';
+  const optionValues = [28,29,30,31];
+  const options = shuffle(optionValues.map(v=>({text:v+' dni', correct:v===days})));
+  const onKnuckle = DAYS_NORMAL[mi]===31;
+  return {
+    topicLabel:'Kalendarz', correctAnswerText: days+' dni',
+    hint: `Skorzystaj z metody kostek dłoni: zaciśnij pięści i licz miesiące kolejno po kostkach i dolinkach (przy przejściu z lipca na sierpień zaczynasz liczyć kostki od nowa, od drugiej pięści). Miesiąc na <strong>kostce</strong> (wypukłości) ma 31 dni, a miesiąc w <strong>dolince</strong> (zagłębieniu) ma mniej — 30 dni, a luty tylko 28/29.<br>${cap(MONTHS[mi])} wypada na ${onKnuckle?'<strong>kostce</strong> — dlatego ma 31 dni':'<strong>dolince</strong> — dlatego ma mniej dni'}.${knuckleDiagramSVG(mi)}`,
+    render(container,onAnswer){
+      container.innerHTML = `<p class="q-instruction">Ile dni ma miesiąc: <strong>${cap(MONTHS[mi])}</strong>${promptExtra}?</p>`;
+      renderTextOptions(container,'optsCalA',options,onAnswer);
+    }
+  };
+}
+function genCalAdjacentMonth(){
+  const mi = randInt(0,11);
+  const dir = Math.random()<0.5?'next':'prev';
+  const targetIdx = dir==='next'? (mi+1)%12 : (mi+11)%12;
+  const question = dir==='next'
+    ? `Jaki miesiąc jest zaraz <strong>po</strong> miesiącu <strong>${cap(MONTHS[mi])}</strong>?`
+    : `Jaki miesiąc jest zaraz <strong>przed</strong> miesiącem <strong>${cap(MONTHS[mi])}</strong>?`;
+  const distractors = sampleDistinct(MONTHS.map((_,i)=>i), 3, targetIdx).filter(i=>i!==mi);
+  while(distractors.length<3){
+    const alt = randInt(0,11);
+    if(alt!==targetIdx && alt!==mi && !distractors.includes(alt)) distractors.push(alt);
+  }
+  const options = shuffle([
+    {text:cap(MONTHS[targetIdx]), correct:true},
+    ...distractors.slice(0,3).map(i=>({text:cap(MONTHS[i]), correct:false}))
+  ]);
+  const beforeIdx = (mi+11)%12, afterIdx = (mi+1)%12;
+  return {
+    topicLabel:'Kalendarz', correctAnswerText: cap(MONTHS[targetIdx]),
+    hint: `Wypisz sąsiednie miesiące w kolejności: … ${cap(MONTHS[beforeIdx])} → <strong>${cap(MONTHS[mi])}</strong> → ${cap(MONTHS[afterIdx])} … ${dir==='next'?'Zaraz po':'Zaraz przed'} ${cap(MONTHS[mi])} jest więc ${cap(MONTHS[targetIdx])}.`,
+    render(container,onAnswer){
+      container.innerHTML = `<p class="q-instruction">${question}</p>`;
+      renderTextOptions(container,'optsCalB',options,onAnswer);
+    }
+  };
+}
+function genCalYearDays(){
+  const askLeap = Math.random()<0.5;
+  const correct = askLeap?366:365;
+  const options = shuffle([365,366,364,367].map(v=>({text:v+' dni', correct:v===correct})));
+  return {
+    topicLabel:'Kalendarz', correctAnswerText: correct+' dni',
+    hint: `Rok zwykły ma 365 dni. Rok przestępny (zdarza się zwykle co 4 lata) ma o jeden dzień więcej — 366 dni, bo luty ma wtedy 29 dni zamiast 28.`,
+    render(container,onAnswer){
+      container.innerHTML = `<p class="q-instruction">Ile dni ma rok ${askLeap?'przestępny':'zwykły'}?</p>`;
+      renderTextOptions(container,'optsCalC',options,onAnswer);
+    }
+  };
+}
+function genCalLeapCheck(){
+  const y = randInt(2016,2039);
+  const correct = isLeap(y);
+  const options = [
+    {text:'TAK', correct: correct},
+    {text:'NIE', correct: !correct}
+  ];
+  const lastTwo = y % 100;
+  const lastTwoDivisible = lastTwo % 4 === 0;
+  const nearestMultiple = Math.floor(lastTwo/4)*4;
+  const lastTwoHint = lastTwoDivisible
+    ? `${lastTwo} : 4 = ${lastTwo/4} (dzieli się bez reszty) — to rok przestępny.`
+    : `${lastTwo} nie dzieli się przez 4 bez reszty (najbliższa wielokrotność 4 to ${nearestMultiple}) — to rok zwykły.`;
+  return {
+    topicLabel:'Kalendarz', correctAnswerText: correct?'TAK':'NIE',
+    hint: `Nie musisz dzielić całego roku! Pełne setki (jak 2000) zawsze dzielą się przez 4, więc wystarczy sprawdzić <strong>dwie ostatnie cyfry roku</strong>: ${lastTwo}. ${lastTwoHint}`,
+    render(container,onAnswer){
+      container.innerHTML = `<p class="q-instruction">Czy rok <strong>${y}</strong> jest rokiem przestępnym?</p>`;
+      renderTextOptions(container,'optsCalD',options,onAnswer);
+    }
+  };
+}
+function genCalDayAfterWeeks(){
+  const startDow = randInt(0,6);
+  const weeks = randInt(1,4);
+  const distractors = sampleDistinct(DOW.map((_,i)=>i),3,startDow).map(i=>DOW[i]);
+  const options = shuffle([
+    {text:cap(DOW[startDow]), correct:true},
+    ...distractors.map(d=>({text:cap(d), correct:false}))
+  ]);
+  return {
+    topicLabel:'Kalendarz', correctAnswerText: cap(DOW[startDow]),
+    hint: `Co 7 dni wypada dokładnie ten sam dzień tygodnia. ${weeks} ${weeksWord(weeks)} to ${weeks}×7=${weeks*7} dni — czyli pełna liczba tygodni, więc dzień tygodnia się nie zmienia i nadal będzie ${cap(DOW[startDow])}.`,
+    render(container,onAnswer){
+      container.innerHTML = `<p class="q-instruction">Dziś jest <strong>${cap(DOW[startDow])}</strong>. Jaki dzień tygodnia będzie za ${weeks*7} dni (czyli za ${weeks} ${weeksWord(weeks)})?</p>`;
+      renderTextOptions(container,'optsCalE',options,onAnswer);
+    }
+  };
+}
+function genCalDateAfterDays(){
+  let mi, startDate, offsetWeeks, targetDate;
+  for(let tries=0; tries<30; tries++){
+    mi = randInt(0,11);
+    offsetWeeks = choice([1,2,3]);
+    const maxStart = DAYS_NORMAL[mi] - offsetWeeks*7;
+    if(maxStart>=1){ startDate = randInt(1,maxStart); targetDate = startDate+offsetWeeks*7; break; }
+  }
+  const startDow = randInt(0,6);
+  const distractors = sampleDistinct(DOW.map((_,i)=>i),3,startDow).map(i=>DOW[i]);
+  const options = shuffle([
+    {text:cap(DOW[startDow]), correct:true},
+    ...distractors.map(d=>({text:cap(d), correct:false}))
+  ]);
+  return {
+    topicLabel:'Kalendarz', correctAnswerText: cap(DOW[startDow]),
+    hint: `Oblicz różnicę dni: ${targetDate} - ${startDate} = ${offsetWeeks*7} dni, czyli dokładnie ${offsetWeeks} ${weeksWord(offsetWeeks)}. Po pełnych tygodniach dzień tygodnia się nie zmienia, więc to nadal będzie ${cap(DOW[startDow])}.`,
+    render(container,onAnswer){
+      container.innerHTML = `<p class="q-instruction"><strong>${startDate} ${MONTHS_GEN[mi]}</strong> to <strong>${cap(DOW[startDow])}</strong>. Jaki dzień tygodnia będzie <strong>${targetDate} ${MONTHS_GEN[mi]}</strong>?</p>`;
+      renderTextOptions(container,'optsCalF',options,onAnswer);
+    }
+  };
+}
+
+/* =========================================================
+   TOPIC 3: CYFRY RZYMSKIE (roman numerals)
+   ========================================================= */
+function toRoman(num){
+  const table = [[10,'X'],[9,'IX'],[5,'V'],[4,'IV'],[1,'I']];
+  let res='';
+  for(const [v,s] of table){
+    while(num>=v){ res+=s; num-=v; }
+  }
+  return res;
+}
+const SUBTRACTIVE_RULE = `<br><small>Zasada: mniejsza cyfra przed większą — odejmujesz (np. IV=5-1=4). Mniejsza cyfra po większej — dodajesz (np. VI=5+1=6).</small>`;
+function romanBreakdownHint(n, roman){
+  const tens = Math.floor(n/10), ones = n%10;
+  const needsRule = ones===4 || ones===9;
+  if(tens===0){
+    const onesText = ones===4?'IV = 5-1 = 4':ones===9?'IX = 10-1 = 9':`${'I'.repeat(ones)} czyli ${ones}×I`;
+    return `${roman} to ${onesText} = ${n}.${needsRule?SUBTRACTIVE_RULE:''}`;
+  }
+  const tensRoman = 'X'.repeat(tens);
+  if(ones===0) return `${roman} to ${tens}×X = ${n}.`;
+  const onesRoman = toRoman(ones);
+  const onesNote = ones===4?' (IV = 5-1 = 4)':ones===9?' (IX = 10-1 = 9)':'';
+  return `Rozbij na dziesiątki i jedności: ${n} = ${tens*10} + ${ones}. ${tens*10} to ${tensRoman} (${tens}×X), a ${ones} to ${onesRoman}${onesNote}. Razem: ${tensRoman}+${onesRoman} = ${roman}.${needsRule?SUBTRACTIVE_RULE:''}`;
+}
+function genRomanToArabic(){
+  const n = randInt(1,39);
+  const roman = toRoman(n);
+  const candidates = [n-1,n+1,n-5,n+5,n-10,n+10,n-2,n+2].filter(v=>v>=1 && v<=39 && v!==n);
+  const distractors = shuffle([...new Set(candidates)]).slice(0,3);
+  const options = shuffle([
+    {text:String(n), correct:true},
+    ...distractors.map(v=>({text:String(v), correct:false}))
+  ]);
+  return {
+    topicLabel:'Cyfry rzymskie', correctAnswerText: String(n),
+    hint: romanBreakdownHint(n, roman),
+    render(container,onAnswer){
+      container.innerHTML = `<p class="q-instruction">Jaką liczbą arabską jest:</p><p class="digital-time">${roman}</p>`;
+      renderTextOptions(container,'optsRomA',options,onAnswer);
+    }
+  };
+}
+function genRomanToRoman(){
+  const n = randInt(1,39);
+  const correct = toRoman(n);
+  const candidates = [n-1,n+1,n-5,n+5,n-10,n+10,n-2,n+2].filter(v=>v>=1 && v<=39 && v!==n);
+  const distractorNums = shuffle([...new Set(candidates)]).slice(0,3);
+  const options = shuffle([
+    {text:correct, correct:true},
+    ...distractorNums.map(v=>({text:toRoman(v), correct:false}))
+  ]);
+  return {
+    topicLabel:'Cyfry rzymskie', correctAnswerText: correct,
+    hint: romanBreakdownHint(n, correct),
+    render(container,onAnswer){
+      container.innerHTML = `<p class="q-instruction">Zapisz liczbę <strong>${n}</strong> cyframi rzymskimi.</p>`;
+      renderTextOptions(container,'optsRomB',options,onAnswer);
+    }
+  };
+}
+function genRomanOperation(){
+  const a = randInt(1,30), b = randInt(1, 39-a);
+  const sum = a+b;
+  const correct = toRoman(sum);
+  const candidates = [sum-1,sum+1,sum-2,sum+2,sum-5,sum+5].filter(v=>v>=1 && v<=39 && v!==sum);
+  const distractorNums = shuffle([...new Set(candidates)]).slice(0,3);
+  const options = shuffle([
+    {text:correct, correct:true},
+    ...distractorNums.map(v=>({text:toRoman(v), correct:false}))
+  ]);
+  return {
+    topicLabel:'Cyfry rzymskie', correctAnswerText: correct,
+    hint: `Zamień na liczby arabskie: ${toRoman(a)} = ${a}, ${toRoman(b)} = ${b}. Dodaj: ${a} + ${b} = ${sum}. Zapisz wynik cyframi rzymskimi: ${sum} = ${correct}.`,
+    render(container,onAnswer){
+      container.innerHTML = `<p class="q-instruction">Oblicz i zapisz wynik cyframi rzymskimi:</p><p class="digital-time">${toRoman(a)} + ${toRoman(b)}</p>`;
+      renderTextOptions(container,'optsRomC',options,onAnswer);
+    }
+  };
+}
+
+/* =========================================================
+   TOPIC 4: WZDŁUŻ I WSZERZ (length units)
+   ========================================================= */
+const LEN_ITEMS = [
+  {name:'długość ołówka', unit:'cm'},
+  {name:'wysokość drzwi', unit:'m'},
+  {name:'odległość z Warszawy do Krakowa', unit:'km'},
+  {name:'długość zeszytu', unit:'cm'},
+  {name:'wzrost ucznia', unit:'cm'},
+  {name:'długość boiska szkolnego', unit:'m'},
+  {name:'szerokość guzika', unit:'cm'},
+  {name:'wysokość domu jednorodzinnego', unit:'m'},
+  {name:'długość rzeki Wisły', unit:'km'},
+  {name:'długość autobusu', unit:'m'},
+  {name:'szerokość zeszytu', unit:'cm'},
+  {name:'trasa rowerowa między miastami', unit:'km'},
+  {name:'długość łóżka', unit:'m'},
+  {name:'długość mrówki', unit:'cm'},
+  {name:'wysokość szafy', unit:'m'},
+];
+
+function genLenConvertFact(){
+  const useKm = Math.random()<0.5;
+  let prompt, correct, unit, distractors, hint;
+  if(!useKm){
+    const m = randInt(1,9);
+    prompt = `${m} m = ? cm`;
+    correct = m*100; unit='cm';
+    distractors = [...new Set([m*10, m*1000, correct+10, correct-10].filter(v=>v>0 && v!==correct))];
+    hint = `Pamiętaj: 1 m = 100 cm. Więc ${m} m = ${m} × 100 = ${correct} cm.`;
+  } else {
+    const km = randInt(1,9);
+    prompt = `${km} km = ? m`;
+    correct = km*1000; unit='m';
+    distractors = [...new Set([km*100, km*10000, correct+100, correct-100].filter(v=>v>0 && v!==correct))];
+    hint = `Pamiętaj: 1 km = 1000 m. Więc ${km} km = ${km} × 1000 = ${correct} m.`;
+  }
+  const chosenDistractors = shuffle(distractors).slice(0,3);
+  const options = shuffle([
+    {text:correct+' '+unit, correct:true},
+    ...chosenDistractors.map(v=>({text:v+' '+unit, correct:false}))
+  ]);
+  return {
+    topicLabel:'Wzdłuż i wszerz', correctAnswerText: correct+' '+unit,
+    hint,
+    render(container,onAnswer){
+      container.innerHTML = `<p class="q-instruction">Uzupełnij:</p><p class="digital-time">${prompt}</p>`;
+      renderTextOptions(container,'optsLenA',options,onAnswer);
+    }
+  };
+}
+function genLenChooseUnit(){
+  const item = choice(LEN_ITEMS);
+  const units = ['cm','m','km'];
+  const options = shuffle(units.map(u=>({text:u, correct:u===item.unit})));
+  const unitReason = item.unit==='cm'?'centymetrach — bo to niewielka długość'
+    : item.unit==='m'?'metrach — bo to długość rzędu pojedynczych metrów'
+    : 'kilometrach — bo to duża odległość';
+  return {
+    topicLabel:'Wzdłuż i wszerz', correctAnswerText: item.unit,
+    hint: `${cap(item.name)} zwykle mierzy się w ${unitReason}.`,
+    render(container,onAnswer){
+      container.innerHTML = `<p class="q-instruction">Jakiej jednostki najlepiej użyć, aby podać:</p><p class="digital-time">${item.name}</p>`;
+      renderTextOptions(container,'optsLenB',options,onAnswer);
+    }
+  };
+}
+function genLenCompare(){
+  const useKm = Math.random()<0.5;
+  let aText, bText, aVal, bVal;
+  if(!useKm){
+    const aCm = randInt(50,250);
+    let bM = randInt(1,3);
+    while(bM*100===aCm) bM = randInt(1,3);
+    aText = aCm+' cm'; bText = bM+' m';
+    aVal = aCm; bVal = bM*100;
+  } else {
+    const aM = randInt(200,900);
+    let bKm = randInt(1,3);
+    while(bKm*1000===aM) bKm = randInt(1,3);
+    aText = aM+' m'; bText = bKm+' km';
+    aVal = aM; bVal = bKm*1000;
+  }
+  const correctText = aVal>bVal? aText : bText;
+  const options = shuffle([
+    {text:aText, correct:aText===correctText},
+    {text:bText, correct:bText===correctText}
+  ]);
+  const smallUnit = useKm ? 'm' : 'cm';
+  const cmp = aVal>bVal ? '>' : '<';
+  const hint = `Zamień na te same jednostki: ${bText} = ${bVal} ${smallUnit}. Teraz porównaj: ${aVal} ${smallUnit} ${cmp} ${bVal} ${smallUnit}, więc dłuższe jest ${correctText}.`;
+  return {
+    topicLabel:'Wzdłuż i wszerz', correctAnswerText: correctText,
+    hint,
+    render(container,onAnswer){
+      container.innerHTML = `<p class="q-instruction">Co jest dłuższe?</p><p class="digital-time">${aText}&nbsp;&nbsp;czy&nbsp;&nbsp;${bText}</p>`;
+      renderTextOptions(container,'optsLenC',options,onAnswer);
+    }
+  };
+}
+function genLenSplitForm(){
+  const m = randInt(1,4);
+  const cmRest = randInt(1,99);
+  const total = m*100+cmRest;
+  const correct = `${m} m ${cmRest} cm`;
+  const wrongOptions = [
+    `${m+1} m ${cmRest} cm`,
+    `${m} m ${Math.min(cmRest+1,99)} cm`,
+    `${m>1?m-1:m+2} m ${cmRest} cm`
+  ].filter(v=>v!==correct);
+  const options = shuffle([
+    {text:correct, correct:true},
+    ...[...new Set(wrongOptions)].slice(0,3).map(v=>({text:v, correct:false}))
+  ]);
+  return {
+    topicLabel:'Wzdłuż i wszerz', correctAnswerText: correct,
+    hint: `Podziel liczbę centymetrów na pełne setki i resztę: ${total} = ${m}×100 + ${cmRest}, czyli ${m} m i ${cmRest} cm.`,
+    render(container,onAnswer){
+      container.innerHTML = `<p class="q-instruction"><strong>${total} cm</strong> to ile metrów i centymetrów?</p>`;
+      renderTextOptions(container,'optsLenD',options,onAnswer);
+    }
+  };
+}
+
+/* =========================================================
+   TOPIC REGISTRY + POOL BUILDER
+   ========================================================= */
+const TIME_GENS = [genTimeReadClock, genTimePickClock, genTimeWords, genTimeElapsed, genTimeSetHand];
+const CAL_GENS = [genCalMonthDays, genCalAdjacentMonth, genCalYearDays, genCalLeapCheck, genCalDayAfterWeeks, genCalDateAfterDays];
+const ROMAN_GENS = [genRomanToArabic, genRomanToRoman, genRomanOperation];
+const LEN_GENS = [genLenConvertFact, genLenChooseUnit, genLenCompare, genLenSplitForm];
+const ALL_GENS = [...TIME_GENS, ...CAL_GENS, ...ROMAN_GENS, ...LEN_GENS];
+
+const TOPIC_META = {
+  all:      { label:'Wszystko (cały dział)', gens: ALL_GENS,   count: 20 },
+  time:     { label:'Zegary',                gens: TIME_GENS,  count: 10 },
+  calendar: { label:'Kalendarz',             gens: CAL_GENS,   count: 12 },
+  roman:    { label:'Cyfry rzymskie',        gens: ROMAN_GENS, count: 9  },
+  length:   { label:'Wzdłuż i wszerz',       gens: LEN_GENS,   count: 8  },
+};
+const TOPIC_ORDER = ['all','time','calendar','roman','length'];
+
+function buildQuestionPool(topicKey){
+  const meta = TOPIC_META[topicKey];
+  let pool = [];
+  while(pool.length < meta.count){
+    pool = pool.concat(shuffle(meta.gens));
+  }
+  pool = pool.slice(0, meta.count);
+  return shuffle(pool).map(g=>g());
+}
+
+/* =========================================================
+   APP CONTROLLER
+   ========================================================= */
 const startScreen = document.getElementById('start-screen');
 const quizScreen = document.getElementById('quiz-screen');
 const resultScreen = document.getElementById('result-screen');
@@ -363,20 +779,38 @@ const nextBtn = document.getElementById('next-btn');
 const progressFill = document.getElementById('progress-fill');
 const progressText = document.getElementById('progress-text');
 const scoreText = document.getElementById('score-text');
+const scoreTotal = document.getElementById('score-total');
+const topicBadge = document.getElementById('topic-badge');
 const resultTitle = document.getElementById('result-title');
 const resultDesc = document.getElementById('result-desc');
+const topicChipsWrap = document.getElementById('topic-chips');
+const countNote = document.getElementById('count-note');
 
 const PRAISE = ['Świetnie! ✅','Brawo! 🎉','Dokładnie tak! 👍','Super! ⭐','Tak jest! 🙌'];
 
-const state = { questions:[], index:0, score:0 };
+const state = { questions:[], index:0, score:0, topic:'all' };
+
+function renderTopicChips(){
+  topicChipsWrap.innerHTML = '';
+  TOPIC_ORDER.forEach(key=>{
+    const btn = document.createElement('button');
+    btn.className = 'chip' + (state.topic===key ? ' selected' : '');
+    btn.textContent = TOPIC_META[key].label;
+    btn.onclick = ()=>{ state.topic = key; renderTopicChips(); };
+    topicChipsWrap.appendChild(btn);
+  });
+  countNote.textContent = `Czeka na Ciebie ${TOPIC_META[state.topic].count} pytań z zakresu: ${TOPIC_META[state.topic].label}.`;
+}
+renderTopicChips();
 
 function startQuiz(){
-  state.questions = buildQuestionPool();
+  state.questions = buildQuestionPool(state.topic);
   state.index = 0;
   state.score = 0;
   startScreen.hidden = true;
   resultScreen.hidden = true;
   quizScreen.hidden = false;
+  scoreTotal.textContent = state.questions.length;
   showQuestion();
 }
 
@@ -385,21 +819,23 @@ function showQuestion(){
   progressFill.style.width = (state.index/state.questions.length*100)+'%';
   progressText.textContent = `Pytanie ${state.index+1} z ${state.questions.length}`;
   scoreText.textContent = state.score;
+  topicBadge.textContent = q.topicLabel;
   feedback.textContent = '';
   feedback.className = 'feedback';
   nextBtn.hidden = true;
   questionArea.innerHTML = '';
-  q.render(questionArea, (isCorrect)=>handleAnswer(isCorrect, q.correctAnswerText));
+  q.render(questionArea, (isCorrect)=>handleAnswer(isCorrect, q.correctAnswerText, q.hint));
 }
 
-function handleAnswer(isCorrect, correctAnswerText){
+function handleAnswer(isCorrect, correctAnswerText, hint){
   if(isCorrect){
     state.score++;
     scoreText.textContent = state.score;
-    feedback.textContent = choice(PRAISE);
+    feedback.innerHTML = choice(PRAISE);
     feedback.className = 'feedback feedback-good';
   } else {
-    feedback.textContent = `Prawidłowa odpowiedź: ${correctAnswerText}`;
+    const hintHTML = hint ? `<div class="hint-box">💡 <strong>Wskazówka:</strong> ${hint}</div>` : '';
+    feedback.innerHTML = `Prawidłowa odpowiedź: ${correctAnswerText}${hintHTML}`;
     feedback.className = 'feedback feedback-bad';
   }
   nextBtn.hidden = false;
@@ -420,15 +856,19 @@ function showResults(){
   const total = state.questions.length;
   resultTitle.textContent = `Wynik: ${state.score} / ${total}`;
   let desc;
-  if(state.score===total) desc='Perfekcyjnie! Jesteś mistrzem zegara! 🏆';
+  if(state.score===total) desc='Perfekcyjnie! Znasz ten dział na wylot! 🏆';
   else if(state.score>=total*0.7) desc='Świetna robota! 👏';
   else if(state.score>=total*0.4) desc='Dobrze, jeszcze trochę ćwiczeń i będzie super! 💪';
-  else desc='Ćwicz dalej odczytywanie godzin — na pewno Ci pójdzie! 🕐';
+  else desc='Ćwicz dalej — na pewno Ci pójdzie coraz lepiej! 📚';
   resultDesc.textContent = desc;
 }
 
 document.getElementById('start-btn').onclick = startQuiz;
-document.getElementById('restart-btn').onclick = startQuiz;
+document.getElementById('restart-btn').onclick = ()=>{
+  startScreen.hidden = false;
+  resultScreen.hidden = true;
+  renderTopicChips();
+};
 nextBtn.onclick = goNext;
 </script>
 </body>
